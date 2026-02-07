@@ -79,16 +79,18 @@ export class UPSClient implements CarrierClient {
             return error;
         }
 
-        if (error instanceof AxiosError) {
-            if (error.code === 'ECONNABORTED') {
+        const axiosError = error as { isAxiosError?: boolean; code?: string; response?: { status: number; data?: unknown }; request?: unknown };
+
+        if (axiosError.isAxiosError) {
+            if (axiosError.code === 'ECONNABORTED') {
                 return new CarrierError('Rate request timed out', CarrierErrorCode.TIMEOUT, {
                     carrier: this.name,
                     retryable: true,
                 });
             }
 
-            if (error.response) {
-                const status = error.response.status;
+            if (axiosError.response) {
+                const status = axiosError.response.status;
 
                 if (status === 401) {
                     return new CarrierError('Authentication failed', CarrierErrorCode.AUTH_FAILED, {
@@ -113,14 +115,14 @@ export class UPSClient implements CarrierClient {
                     });
                 }
 
-                const errorData = error.response.data;
+                const errorData = axiosError.response.data;
                 return new CarrierError(
                     `UPS API error: ${JSON.stringify(errorData)}`,
                     CarrierErrorCode.CARRIER_ERROR,
                     {
                         carrier: this.name,
                         statusCode: status,
-                        details: errorData,
+                        details: errorData as Record<string, unknown>,
                     }
                 );
             }

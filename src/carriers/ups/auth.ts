@@ -70,16 +70,18 @@ export class UPSAuthClient {
     }
 
     private handleAuthError(error: unknown): CarrierError {
-        if (error instanceof AxiosError) {
-            if (error.code === 'ECONNABORTED') {
+        const axiosError = error as { isAxiosError?: boolean; code?: string; response?: { status: number; data?: unknown }; request?: unknown };
+
+        if (axiosError.isAxiosError) {
+            if (axiosError.code === 'ECONNABORTED') {
                 return new CarrierError('Authentication request timed out', CarrierErrorCode.TIMEOUT, {
                     carrier: 'UPS',
                     retryable: true,
                 });
             }
 
-            if (error.response) {
-                const status = error.response.status;
+            if (axiosError.response) {
+                const status = axiosError.response.status;
 
                 if (status === 401) {
                     return new CarrierError('Invalid UPS credentials', CarrierErrorCode.AUTH_FAILED, {

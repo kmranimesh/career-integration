@@ -1,11 +1,6 @@
 import { Address, Package, RateRequest, RateQuote, ServiceLevel } from '../../types';
-import {
-    UPSAddress,
-    UPSPackage,
-    UPSRateRequest,
-    UPSRatedShipment,
-    UPSService,
-} from './types';
+import { UPSRatedShipment } from './schemas';
+import { UPSAddress, UPSPackage, UPSRateRequest, UPSService } from './types';
 
 const SERVICE_LEVEL_TO_UPS: Record<ServiceLevel, string> = {
     GROUND: '03',

@@ -1,12 +1,7 @@
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { config } from '../../config';
 import { CarrierError, CarrierErrorCode } from '../../types';
-
-interface TokenResponse {
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-}
+import { UPSTokenResponseSchema } from './schemas';
 
 interface CachedToken {
     accessToken: string;
@@ -44,7 +39,7 @@ export class UPSAuthClient {
         try {
             const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
 
-            const response = await axios.post<TokenResponse>(
+            const response = await axios.post(
                 this.tokenUrl,
                 'grant_type=client_credentials',
                 {
@@ -56,7 +51,17 @@ export class UPSAuthClient {
                 }
             );
 
-            const { access_token, expires_in } = response.data;
+
+            const parsed = UPSTokenResponseSchema.safeParse(response.data);
+            if (!parsed.success) {
+                throw new CarrierError(
+                    `Invalid token response from UPS: ${parsed.error.message}`,
+                    CarrierErrorCode.INVALID_RESPONSE,
+                    { carrier: 'UPS', details: { errors: parsed.error.errors } }
+                );
+            }
+
+            const { access_token, expires_in } = parsed.data;
 
             this.cachedToken = {
                 accessToken: access_token,
@@ -65,6 +70,9 @@ export class UPSAuthClient {
 
             return access_token;
         } catch (error) {
+            if (error instanceof CarrierError) {
+                throw error;
+            }
             throw this.handleAuthError(error);
         }
     }

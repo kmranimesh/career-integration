@@ -8,6 +8,7 @@ A TypeScript service for integrating with shipping carriers (UPS, with extensibl
 - **OAuth 2.0 Authentication**: Token caching and automatic refresh
 - **Extensible Architecture**: Easy to add new carriers
 - **Strong Typing**: Full TypeScript with Zod validation
+- **Runtime Validation**: Validates both inputs AND API responses (no blind type assertions)
 - **Error Handling**: Structured errors with retry hints
 
 ## Quick Start

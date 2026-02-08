@@ -226,5 +226,19 @@ describe('UPSClient', () => {
                 retryable: true,
             });
         });
+
+        it('should handle malformed response from UPS API', async () => {
+            const malformedResponse = {
+                RateResponse: {
+                    RatedShipment: 'not an object',
+                },
+            };
+            mockedAxios.post.mockResolvedValueOnce({ data: malformedResponse });
+
+            await expect(client.getRates(validRateRequest)).rejects.toMatchObject({
+                code: CarrierErrorCode.INVALID_RESPONSE,
+                carrier: 'UPS',
+            });
+        });
     });
 });

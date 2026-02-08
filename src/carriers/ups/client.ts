@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { config } from '../../config';
 import {
     RateRequest,
@@ -9,7 +9,7 @@ import {
 } from '../../types';
 import { CarrierClient } from '../carrier.interface';
 import { UPSAuthClient } from './auth';
-import { UPSRateResponse, UPSRatedShipment } from './types';
+import { UPSRateResponseSchema, UPSRatedShipment } from './schemas';
 import { buildUPSRateRequest, mapUPSRatedShipmentToQuote } from './mappers';
 
 export class UPSClient implements CarrierClient {
@@ -40,7 +40,7 @@ export class UPSClient implements CarrierClient {
         try {
             const token = await this.authClient.getAccessToken();
 
-            const response = await axios.post<UPSRateResponse>(
+            const response = await axios.post(
                 this.rateUrl,
                 upsRequest,
                 {
@@ -56,12 +56,27 @@ export class UPSClient implements CarrierClient {
 
             return this.parseRateResponse(response.data);
         } catch (error) {
+            if (error instanceof CarrierError) {
+                throw error;
+            }
             throw this.handleRateError(error);
         }
     }
 
-    private parseRateResponse(data: UPSRateResponse): RateResponse {
-        const ratedShipments = data.RateResponse.RatedShipment;
+    private parseRateResponse(data: unknown): RateResponse {
+        const parsed = UPSRateResponseSchema.safeParse(data);
+        if (!parsed.success) {
+            throw new CarrierError(
+                `Invalid response from UPS API: ${parsed.error.message}`,
+                CarrierErrorCode.INVALID_RESPONSE,
+                {
+                    carrier: this.name,
+                    details: { errors: parsed.error.errors },
+                }
+            );
+        }
+
+        const ratedShipments = parsed.data.RateResponse.RatedShipment;
         const shipmentArray: UPSRatedShipment[] = Array.isArray(ratedShipments)
             ? ratedShipments
             : [ratedShipments];
@@ -75,10 +90,6 @@ export class UPSClient implements CarrierClient {
     }
 
     private handleRateError(error: unknown): CarrierError {
-        if (error instanceof CarrierError) {
-            return error;
-        }
-
         const axiosError = error as { isAxiosError?: boolean; code?: string; response?: { status: number; data?: unknown }; request?: unknown };
 
         if (axiosError.isAxiosError) {
